@@ -1,0 +1,217 @@
+/* ─────────────────────────────────────────────
+   StudySpace Design System v1.0
+   globals.css — CSS Variables + Base Styles
+   ───────────────────────────────────────────── */
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* ── DARK MODE (default) ─────────────────────── */
+:root {
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --color-bg-base:     #0F0F14;
+  --color-bg-surface:  #18181F;
+  --color-bg-elevated: #222230;
+  --color-bg-overlay:  #2C2C3E;
+
+  /* Text */
+  --color-text-primary:   #F0F0FF;
+  --color-text-secondary: #A8A8C0;
+  --color-text-muted:     #646480;
+  --color-text-inverse:   #0F0F14;
+
+  /* Borders */
+  --color-border-subtle:  #1E1E2E;
+  --color-border-default: #2E2E44;
+  --color-border-strong:  #4A4A6A;
+
+  /* Brand */
+  --color-primary:        #6366F1;
+  --color-primary-hover:  #4F46E5;
+  --color-primary-muted:  rgba(99, 102, 241, 0.15);
+
+  /* Status */
+  --color-success-bg:     #052E16;
+  --color-success-text:   #86EFAC;
+  --color-success-border: #166534;
+  --color-success-icon:   #4ADE80;
+
+  --color-warning-bg:     #2D1B00;
+  --color-warning-text:   #FDE68A;
+  --color-warning-border: #92400E;
+  --color-warning-icon:   #FBBF24;
+
+  --color-error-bg:       #2D0A0A;
+  --color-error-text:     #FCA5A5;
+  --color-error-border:   #991B1B;
+  --color-error-icon:     #F87171;
+
+  --color-info-bg:        #082040;
+  --color-info-text:      #BAE6FD;
+  --color-info-border:    #075985;
+  --color-info-icon:      #38BDF8;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 2px #0F0F14, 0 0 0 4px #6366F1;
+}
+
+
+/* ── LIGHT MODE ──────────────────────────────── */
+.light, [data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg-base:     #F8F8FF;
+  --color-bg-surface:  #FFFFFF;
+  --color-bg-elevated: #F0F0FA;
+  --color-bg-overlay:  #E8E8F5;
+
+  --color-text-primary:   #0F0F1A;
+  --color-text-secondary: #44445C;
+  --color-text-muted:     #8888A8;
+  --color-text-inverse:   #F0F0FF;
+
+  --color-border-subtle:  #E4E4F0;
+  --color-border-default: #C8C8E0;
+  --color-border-strong:  #8888C0;
+
+  --color-primary-muted:  rgba(99, 102, 241, 0.10);
+
+  --color-success-bg:     #F0FDF4;
+  --color-success-text:   #166534;
+  --color-success-border: #BBF7D0;
+  --color-success-icon:   #16A34A;
+
+  --color-warning-bg:     #FFFBEB;
+  --color-warning-text:   #92400E;
+  --color-warning-border: #FDE68A;
+  --color-warning-icon:   #D97706;
+
+  --color-error-bg:       #FFF1F2;
+  --color-error-text:     #991B1B;
+  --color-error-border:   #FECDD3;
+  --color-error-icon:     #DC2626;
+
+  --color-info-bg:        #F0F9FF;
+  --color-info-text:      #075985;
+  --color-info-border:    #BAE6FD;
+  --color-info-icon:      #0284C7;
+
+  --focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #6366F1;
+}
+
+
+/* ── BASE STYLES ─────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.625;
+}
+
+/* Focus visible — keyboard only */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* ── COMPONENT UTILITIES ─────────────────────── */
+@layer components {
+
+  /* Surfaces */
+  .surface         { background-color: var(--color-bg-surface); }
+  .surface-elevated{ background-color: var(--color-bg-elevated); }
+
+  /* Text utilities */
+  .text-primary    { color: var(--color-text-primary); }
+  .text-secondary  { color: var(--color-text-secondary); }
+  .text-muted      { color: var(--color-text-muted); }
+
+  /* Border utilities */
+  .border-subtle   { border-color: var(--color-border-subtle); }
+  .border-strong   { border-color: var(--color-border-strong); }
+
+  /* Brand glow utility */
+  .glow-primary {
+    box-shadow: 0 0 20px 2px rgba(99, 102, 241, 0.35);
+  }
+
+  /* Status banners */
+  .status-success {
+    background-color: var(--color-success-bg);
+    color: var(--color-success-text);
+    border-color: var(--color-success-border);
+  }
+  .status-warning {
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    border-color: var(--color-warning-border);
+  }
+  .status-error {
+    background-color: var(--color-error-bg);
+    color: var(--color-error-text);
+    border-color: var(--color-error-border);
+  }
+  .status-info {
+    background-color: var(--color-info-bg);
+    color: var(--color-info-text);
+    border-color: var(--color-info-border);
+  }
+
+  /* Typography presets */
+  .heading-display {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+  .heading-section {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .body-copy {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.625;
+  }
+  .label-caps {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .code {
+    font-family: 'JetBrains Mono', Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+}
