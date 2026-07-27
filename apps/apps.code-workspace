@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../docs"
+		},
+		{
+			"path": "../mkdir -p apps"
+		},
+		{
+			"path": "../packages"
+		},
+		{
+			"path": "../sprint4-backend-structured"
+		},
+		{
+			"path": "../sprint4-frontend-ready (1).zip_unzipped"
+		},
+		{
+			"path": "../sprint4-qa"
+		}
+	]
+}
