@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
-const { authenticateSocket } = require('../middleware/auth.middleware');
-const { socketChatRateLimiter } = require('../middleware/rateLimiter.middleware');
-const chatService = require('../services/chat.service');
+const { authenticateSocket } = require('./middleware/auth.middleware');
+const { socketChatRateLimiter } = require('./middleware/rateLimiter.middleware');
+const chatService = require('./chat/chat.service'); // ✅ FIX: correct relative path
 
 let io;
 
@@ -14,12 +14,18 @@ const initSocket = (server, redisClient) => {
     pingTimeout: 60000,
   });
 
-  // ─── Auth Middleware ───────────────────────────────────────────
+  // ─── 🔒 FIX 1: Socket.IO JWT Auth Middleware ──────────────────────────────
+  // Har naye connection pe JWT verify hoga — bina valid token ke connection reject
   io.use(authenticateSocket);
+  // authenticateSocket should:
+  //   1. socket.handshake.auth.token ya Authorization header se token nikale
+  //   2. jwt.verify() kare
+  //   3. socket.user = decoded user set kare
+  //   4. Invalid token pe next(new Error('Unauthorized')) call kare
 
   // ─── Connection Handler ────────────────────────────────────────
   io.on('connection', (socket) => {
-    const user = socket.user;
+    const user = socket.user; // set by authenticateSocket middleware
     const userId = user._id || user.id;
 
     console.log(`🔌 Socket connected: ${userId}`);
@@ -33,7 +39,6 @@ const initSocket = (server, redisClient) => {
 
       socket.join(`community:${communityId}`);
 
-      // Broadcast online status to community
       socket.to(`community:${communityId}`).emit('chat:online', {
         communityId,
         userId,
@@ -41,7 +46,6 @@ const initSocket = (server, redisClient) => {
         online: true,
       });
 
-      // Track user's active community for cleanup on disconnect
       socket.data.activeCommunities = socket.data.activeCommunities || new Set();
       socket.data.activeCommunities.add(communityId);
     });
@@ -58,10 +62,8 @@ const initSocket = (server, redisClient) => {
     });
 
     // ── chat:typing ──────────────────────────────────────────────
-    // Client emits { communityId, isTyping: true/false }
     socket.on('chat:typing', ({ communityId, isTyping }) => {
       if (!communityId) return;
-
       socket.to(`community:${communityId}`).emit('chat:typing', {
         communityId,
         userId,
@@ -70,14 +72,13 @@ const initSocket = (server, redisClient) => {
       });
     });
 
-    // ── chat:message (via socket) ────────────────────────────────
-    // Alternative to REST POST — useful for realtime-first clients
+    // ── chat:message ─────────────────────────────────────────────
     socket.on('chat:message', async ({ communityId, content, type, attachments, replyTo }) => {
       if (!communityId || !content?.trim()) {
         return socket.emit('chat:error', { message: 'communityId and content are required' });
       }
 
-      // Rate limit check
+      // 🔒 FIX 2: Redis sliding-window rate limit (socketChatRateLimiter)
       const { allowed, remaining } = await socketChatRateLimiter(userId, communityId);
       if (!allowed) {
         return socket.emit('chat:error', {
@@ -96,7 +97,6 @@ const initSocket = (server, redisClient) => {
           replyTo,
         });
 
-        // Broadcast to everyone in community room (including sender)
         io.to(`community:${communityId}`).emit('chat:message', {
           communityId,
           message,
@@ -110,8 +110,6 @@ const initSocket = (server, redisClient) => {
     // ── Disconnect ───────────────────────────────────────────────
     socket.on('disconnect', () => {
       console.log(`🔌 Socket disconnected: ${userId}`);
-
-      // Broadcast offline status to all active communities
       if (socket.data.activeCommunities) {
         socket.data.activeCommunities.forEach((communityId) => {
           socket.to(`community:${communityId}`).emit('chat:online', {
