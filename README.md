@@ -31,6 +31,7 @@ All Sprint S2 components build on Sprint 1 approved tokens:
 3. `UI-S2-03` — Followers/Following List Modal
 4. `UI-S2-01` — Profile Page (assembles all above components)
 
+ 
 ---
 
 ## Open Items
