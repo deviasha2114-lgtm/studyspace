@@ -1,0 +1,19 @@
+export interface ProfileStats {
+  notes: number;
+  followers: number;
+  following: number;
+}
+
+export interface ProfileUser {
+  id: string;
+  displayName: string;
+  username: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  stream: string | null;
+  className: string | null;
+  joinedAt: string;
+  stats: ProfileStats;
+  isOwnProfile: boolean;
+  isFollowing?: boolean;
+}
