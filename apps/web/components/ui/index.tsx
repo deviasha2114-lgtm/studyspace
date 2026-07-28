@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 
 /* Spinner */
@@ -22,7 +21,6 @@ export function Spinner({
 
 /* Button */
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-
 export function Button({
   variant = "primary",
   className = "",
@@ -114,27 +112,25 @@ export function Modal({
   children,
 }: {
   open: boolean;
-mkdir -p apps/web/components/ui
-mkdir -p apps/web/components/profile
-
-# ---------- profile.types.ts ----------
-cat > apps/web/components/profile/profile.types.ts << 'EOF'
-export interface ProfileStats {
-  notes: number;
-  followers: number;
-  following: number;
-}
-
-export interface ProfileUser {
-  id: string;
-  displayName: string;
-  username: string;
-  bio: string | null;
-  avatarUrl: string | null;
-  stream: string | null;
-  className: string | null;
-  joinedAt: string;
-  stats: ProfileStats;
-  isOwnProfile: boolean;
-  isFollowing?: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+}): React.JSX.Element | null {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        {title && (
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">{title}</h2>
+        )}
+        {children}
+        <button
+          onClick={onClose}
+          className="mt-4 text-sm text-gray-500 hover:text-gray-700"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
 }
