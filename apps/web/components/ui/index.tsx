@@ -120,8 +120,6 @@ export function Modal({
   children: React.ReactNode;
 }
 export interface ProfileStats {
-  
-export interface ProfileStats {
   notes: number;
   followers: number;
   following: number;
