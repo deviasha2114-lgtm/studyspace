@@ -113,12 +113,14 @@ export function Modal({
   title,
   children,
 }: {
+  
   open: boolean;
-mkdir -p apps/web/components/ui
-mkdir -p apps/web/components/profile
-
-# ---------- profile.types.ts ----------
-cat > apps/web/components/profile/profile.types.ts << 'EOF'
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+export interface ProfileStats {
+  
 export interface ProfileStats {
   notes: number;
   followers: number;
