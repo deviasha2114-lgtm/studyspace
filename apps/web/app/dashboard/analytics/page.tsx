@@ -1,5 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { Suspense } from "react";
+
+function AnalyticsContent() {
+  const { data: session } = useSession();
+  return <div className="min-h-screen bg-zinc-950 p-6"><h1 className="text-white text-2xl font-bold">Analytics</h1></div>;
+}
+
 import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 
