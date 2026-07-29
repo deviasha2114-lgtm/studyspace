@@ -186,3 +186,104 @@ router.get('/sessions/:noteId', authMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+// POST /api/ai/summarize
+router.post('/summarize', authMiddleware, async (req, res) => {
+  try {
+    const { noteId, content } = req.body;
+    const userId = req.user.id;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    const { allowed, reason } = checkRateLimit(userId);
+    if (!allowed) return res.status(429).json({ error: reason });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: `Summarize this note concisely in bullet points:\n\n${content}` }] }),
+    });
+    const data = await response.json();
+    res.json({ summary: data.content?.[0]?.text || 'Could not summarize.' });
+  } catch (error) {
+    console.error('Summarize error:', error);
+    res.status(500).json({ error: 'Summarize failed' });
+  }
+});
+
+// POST /api/ai/explain
+router.post('/explain', authMiddleware, async (req, res) => {
+  try {
+    const { concept, context } = req.body;
+    const userId = req.user.id;
+    if (!concept?.trim()) return res.status(400).json({ error: 'Concept required' });
+    const { allowed, reason } = checkRateLimit(userId);
+    if (!allowed) return res.status(429).json({ error: reason });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: `Explain this concept simply: "${concept}"\n\nContext: ${context || 'None'}` }] }),
+    });
+    const data = await response.json();
+    res.json({ explanation: data.content?.[0]?.text || 'Could not explain.' });
+  } catch (error) {
+    console.error('Explain error:', error);
+    res.status(500).json({ error: 'Explain failed' });
+  }
+});
+
+// POST /api/ai/quiz
+router.post('/quiz', authMiddleware, async (req, res) => {
+  try {
+    const { content, count = 5 } = req.body;
+    const userId = req.user.id;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    const { allowed, reason } = checkRateLimit(userId);
+    if (!allowed) return res.status(429).json({ error: reason });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: `Generate ${count} quiz questions with answers from this content. Return as JSON array: [{question, options: [4 options], answer}]\n\n${content}` }] }),
+    });
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '[]';
+    try {
+      const clean = text.replace(/```json|```/g, '').trim();
+      res.json({ quiz: JSON.parse(clean) });
+    } catch { res.json({ quiz: text }); }
+  } catch (error) {
+    console.error('Quiz error:', error);
+    res.status(500).json({ error: 'Quiz generation failed' });
+  }
+});
+
+// POST /api/ai/suggest
+router.post('/suggest', authMiddleware, async (req, res) => {
+  try {
+    const { noteId, title, content } = req.body;
+    const userId = req.user.id;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    const { allowed, reason } = checkRateLimit(userId);
+    if (!allowed) return res.status(429).json({ error: reason });
+
+    const userNotes = await prisma.note.findMany({
+      where: { authorId: userId, NOT: { id: noteId } },
+      select: { id: true, title: true },
+      take: 20,
+    });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: `Based on this note titled "${title}":\n${content}\n\nFrom these notes: ${JSON.stringify(userNotes)}\n\nSuggest 3-5 related notes and topics. Return JSON: {relatedNotes: [{id, title}], topics: [string]}` }] }),
+    });
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '{}';
+    try {
+      const clean = text.replace(/```json|```/g, '').trim();
+      res.json(JSON.parse(clean));
+    } catch { res.json({ suggestions: text }); }
+  } catch (error) {
+    console.error('Suggest error:', error);
+    res.status(500).json({ error: 'Suggestions failed' });
+  }
+}); module.exports = router;
