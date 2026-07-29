@@ -2,18 +2,25 @@ import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <aside className="w-64 bg-white border-r flex flex-col p-6 gap-2 fixed h-full">
-        <h1 className="text-xl font-bold text-blue-600 mb-6">StudySpace</h1>
-        <Link href="/profile" className="px-4 py-2 rounded-lg hover:bg-gray-100"> Home</Link>
-        <Link href="/notes" className="px-4 py-2 rounded-lg hover:bg-gray-100"> Notes</Link>
-        <Link href="/notes/create" className="px-4 py-2 rounded-lg hover:bg-gray-100"> Create Note</Link>
-        <Link href="/communities" className="px-4 py-2 rounded-lg hover:bg-gray-100"> Communities</Link>
-        <Link href="/live" className="px-4 py-2 rounded-lg hover:bg-gray-100"> Live Study</Link>
-        <Link href="/search" className="px-4 py-2 rounded-lg hover:bg-gray-100"> Search</Link>
-        <Link href="/profile" className="px-4 py-2 rounded-lg hover:bg-gray-100 mt-auto"> Profile</Link>
+    <div style={{ minHeight:'100vh', display:'flex', background:'var(--color-bg-base)' }}>
+      <aside style={{ width:'240px', background:'var(--color-bg-surface)', borderRight:'1px solid var(--color-border-default)', display:'flex', flexDirection:'column', padding:'1.5rem 1rem', gap:'0.25rem', position:'fixed', height:'100vh' }}>
+        <h1 style={{ color:'var(--color-primary)', fontWeight:800, fontSize:'1.25rem', marginBottom:'1.5rem', paddingLeft:'0.75rem' }}>StudySpace</h1>
+        {[
+          { href:'/profile', label:'🏠 Home' },
+          { href:'/notes', label:'📝 Notes' },
+          { href:'/notes/create', label:'➕ Create Note' },
+          { href:'/communities', label:'👥 Communities' },
+          { href:'/live', label:'🔴 Live Study' },
+          { href:'/search', label:'🔍 Search' },
+          { href:'/profile', label:'👤 Profile' },
+        ].map(item => (
+          <Link key={item.href+item.label} href={item.href} style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem', display:'block' }}
+            onMouseOver={e => (e.currentTarget.style.background='var(--color-bg-elevated)')}
+            onMouseOut={e => (e.currentTarget.style.background='transparent')}
+          >{item.label}</Link>
+        ))}
       </aside>
-      <main className="ml-64 flex-1 p-8">{children}</main>
+      <main style={{ marginLeft:'240px', flex:1, padding:'2rem' }}>{children}</main>
     </div>
   );
 }

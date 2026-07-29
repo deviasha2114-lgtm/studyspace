@@ -3,35 +3,33 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
-interface Community { id: string; name: string; description?: string; isPrivate: boolean; members: { user: { name: string; }; role: string; }[]; notes: { id: string; title: string; status: string; author: { name: string; }; }[]; }
+interface Community { id:string; name:string; description?:string; members:{user:{name:string};role:string}[]; notes:{id:string;title:string;status:string;author:{name:string}}[]; }
 
 export default function CommunityDetailPage() {
   const { slug } = useParams();
-  const [community, setCommunity] = useState<Community | null>(null);
+  const [community, setCommunity] = useState<Community|null>(null);
 
   useEffect(() => {
-    fetch(`/api/communities/${slug}`).then(r => r.json()).then(setCommunity).catch(() => {});
+    fetch(`/api/communities/${slug}`).then(r=>r.json()).then(setCommunity).catch(()=>{});
   }, [slug]);
 
-  if (!community) return <div className="text-center py-20 text-gray-400">Loading...</div>;
+  if (!community) return <div style={{ textAlign:'center', padding:'5rem', color:'var(--color-text-muted)' }}>Loading...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-        <h1 className="text-2xl font-bold">{community.name}</h1>
-        <p className="text-gray-500 mt-1">{community.description}</p>
-        <p className="text-sm text-gray-400 mt-2"> {community.members?.length ?? 0} members</p>
+    <div style={{ maxWidth:'800px', margin:'0 auto' }}>
+      <div style={{ background:'var(--color-bg-surface)', borderRadius:'0.75rem', padding:'1.5rem', border:'1px solid var(--color-border-default)', marginBottom:'1.5rem' }}>
+        <h1 style={{ color:'var(--color-text-primary)', fontSize:'1.5rem', fontWeight:700 }}>{community.name}</h1>
+        <p style={{ color:'var(--color-text-secondary)', marginTop:'0.4rem' }}>{community.description}</p>
+        <p style={{ color:'var(--color-text-muted)', fontSize:'0.85rem', marginTop:'0.5rem' }}>👥 {community.members?.length ?? 0} members</p>
       </div>
-      <h2 className="text-lg font-semibold mb-4">Notes</h2>
-      <div className="grid gap-3">
-        {community.notes?.map(n => (
-          <Link href={`/notes/${n.id}`} key={n.id} className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition block flex justify-between">
-            <span className="font-medium">{n.title}</span>
-            <span className="text-sm text-gray-400">{n.author?.name}</span>
-          </Link>
-        ))}
-        {community.notes?.length === 0 && <p className="text-gray-400">No notes in this community yet.</p>}
-      </div>
+      <h2 style={{ color:'var(--color-text-primary)', fontWeight:600, marginBottom:'1rem' }}>Notes</h2>
+      {community.notes?.map(n => (
+        <Link href={`/notes/${n.id}`} key={n.id} style={{ background:'var(--color-bg-surface)', borderRadius:'0.75rem', padding:'1rem 1.25rem', border:'1px solid var(--color-border-default)', marginBottom:'0.75rem', display:'flex', justifyContent:'space-between', alignItems:'center', textDecoration:'none' }}>
+          <span style={{ color:'var(--color-text-primary)', fontWeight:500 }}>{n.title}</span>
+          <span style={{ color:'var(--color-text-muted)', fontSize:'0.85rem' }}>{n.author?.name}</span>
+        </Link>
+      ))}
+      {community.notes?.length===0 && <p style={{ color:'var(--color-text-muted)' }}>No notes yet.</p>}
     </div>
   );
 }

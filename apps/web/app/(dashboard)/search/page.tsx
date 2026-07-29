@@ -5,7 +5,7 @@ import Link from 'next/link';
 export default function SearchPage() {
   const [q, setQ] = useState('');
   const [type, setType] = useState('all');
-  const [results, setResults] = useState<{ notes: any[]; users: any[]; meta: any } | null>(null);
+  const [results, setResults] = useState<{notes:any[];users:any[];meta:any}|null>(null);
   const [loading, setLoading] = useState(false);
 
   const search = useCallback(async () => {
@@ -17,49 +17,51 @@ export default function SearchPage() {
     setLoading(false);
   }, [q, type]);
 
-  useEffect(() => {
-    const t = setTimeout(search, 300);
-    return () => clearTimeout(t);
-  }, [search]);
+  useEffect(() => { const t = setTimeout(search, 300); return () => clearTimeout(t); }, [search]);
+
+  const pill = (t: string) => ({
+    padding:'0.4rem 1rem', borderRadius:'999px', fontSize:'0.85rem', fontWeight:600, cursor:'pointer',
+    background: type===t ? 'var(--color-primary)' : 'var(--color-bg-elevated)',
+    color: type===t ? '#fff' : 'var(--color-text-secondary)',
+    border: '1px solid ' + (type===t ? 'var(--color-primary)' : 'var(--color-border-default)'),
+  });
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Search</h1>
-      <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search notes or users..." className="w-full border rounded-xl px-5 py-3 text-lg mb-4 shadow-sm" />
-      <div className="flex gap-2 mb-6">
-        {['all','notes','users'].map(t => (
-          <button key={t} onClick={() => setType(t)} className={`px-4 py-1.5 rounded-full text-sm font-medium border ${type === t ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-100'}`}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
-        ))}
+    <div style={{ maxWidth:'720px', margin:'0 auto' }}>
+      <h1 style={{ color:'var(--color-text-primary)', fontSize:'1.5rem', fontWeight:700, marginBottom:'1.5rem' }}>Search</h1>
+      <input type="text" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search notes or users..." style={{ width:'100%', background:'var(--color-bg-surface)', border:'1px solid var(--color-border-default)', color:'var(--color-text-primary)', borderRadius:'0.75rem', padding:'0.85rem 1.25rem', fontSize:'1rem', outline:'none', marginBottom:'1rem' }} />
+      <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1.5rem' }}>
+        {['all','notes','users'].map(t => <button key={t} onClick={()=>setType(t)} style={pill(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>)}
       </div>
-      {loading && <p className="text-gray-400">Searching...</p>}
+      {loading && <p style={{ color:'var(--color-text-muted)' }}>Searching...</p>}
       {results && (
-        <div className="space-y-6">
+        <div style={{ display:'flex', flexDirection:'column', gap:'1.5rem' }}>
           {results.notes?.length > 0 && (
             <div>
-              <h2 className="font-semibold text-gray-500 mb-3">Notes ({results.meta?.notesTotal})</h2>
-              {results.notes.map((n: any) => (
-                <Link href={`/notes/${n.id}`} key={n.id} className="block bg-white rounded-xl p-4 shadow-sm hover:shadow-md mb-2">
-                  <p className="font-medium">{n.title}</p>
-                  <p className="text-sm text-gray-400 mt-1" dangerouslySetInnerHTML={{ __html: n.snippet }} />
+              <p style={{ color:'var(--color-text-muted)', fontSize:'0.85rem', marginBottom:'0.75rem' }}>NOTES ({results.meta?.notesTotal})</p>
+              {results.notes.map((n:any) => (
+                <Link href={`/notes/${n.id}`} key={n.id} style={{ background:'var(--color-bg-surface)', borderRadius:'0.75rem', padding:'1rem 1.25rem', border:'1px solid var(--color-border-default)', marginBottom:'0.5rem', display:'block', textDecoration:'none' }}>
+                  <p style={{ color:'var(--color-text-primary)', fontWeight:500 }}>{n.title}</p>
+                  <p style={{ color:'var(--color-text-secondary)', fontSize:'0.8rem', marginTop:'0.25rem' }} dangerouslySetInnerHTML={{ __html:n.snippet }} />
                 </Link>
               ))}
             </div>
           )}
           {results.users?.length > 0 && (
             <div>
-              <h2 className="font-semibold text-gray-500 mb-3">People ({results.meta?.usersTotal})</h2>
-              {results.users.map((u: any) => (
-                <div key={u.id} className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"></div>
+              <p style={{ color:'var(--color-text-muted)', fontSize:'0.85rem', marginBottom:'0.75rem' }}>PEOPLE ({results.meta?.usersTotal})</p>
+              {results.users.map((u:any) => (
+                <div key={u.id} style={{ background:'var(--color-bg-surface)', borderRadius:'0.75rem', padding:'1rem 1.25rem', border:'1px solid var(--color-border-default)', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                  <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'var(--color-primary-muted)', display:'flex', alignItems:'center', justifyContent:'center' }}>👤</div>
                   <div>
-                    <p className="font-medium">{u.name}</p>
-                    <p className="text-sm text-gray-400">{u.noteCount} notes</p>
+                    <p style={{ color:'var(--color-text-primary)', fontWeight:500 }}>{u.name}</p>
+                    <p style={{ color:'var(--color-text-muted)', fontSize:'0.8rem' }}>{u.noteCount} notes</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          {results.meta?.total === 0 && <p className="text-gray-400">No results found for "{q}"</p>}
+          {results.meta?.total===0 && <p style={{ color:'var(--color-text-muted)' }}>No results for "{q}"</p>}
         </div>
       )}
     </div>

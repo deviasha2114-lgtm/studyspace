@@ -2,38 +2,38 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-interface Community { id: string; name: string; slug: string; description?: string; isPrivate: boolean; _count: { members: number; notes: number; }; }
+interface Community { id:string; name:string; slug:string; description?:string; isPrivate:boolean; _count:{members:number;notes:number}; }
 
 export default function CommunitiesPage() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/communities').then(r => r.json()).then(d => { setCommunities(d); setLoading(false); }).catch(() => setLoading(false));
+    fetch('/api/communities').then(r=>r.json()).then(d=>{setCommunities(d);setLoading(false);}).catch(()=>setLoading(false));
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Communities</h1>
-        <Link href="/communities/create" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+ Create</Link>
+    <div style={{ maxWidth:'900px', margin:'0 auto' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem' }}>
+        <h1 style={{ color:'var(--color-text-primary)', fontSize:'1.5rem', fontWeight:700 }}>Communities</h1>
+        <Link href="/communities/create" style={{ background:'var(--color-primary)', color:'#fff', padding:'0.5rem 1.25rem', borderRadius:'0.5rem', textDecoration:'none', fontWeight:600 }}>+ Create</Link>
       </div>
-      {loading && <p className="text-gray-400">Loading...</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {loading && <p style={{ color:'var(--color-text-muted)' }}>Loading...</p>}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:'1rem' }}>
         {communities.map(c => (
-          <Link href={`/communities/${c.slug}`} key={c.id} className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition block">
-            <div className="flex justify-between items-start">
-              <h2 className="font-semibold text-lg">{c.name}</h2>
-              {c.isPrivate && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Private</span>}
+          <Link href={`/communities/${c.slug}`} key={c.id} style={{ background:'var(--color-bg-surface)', borderRadius:'0.75rem', padding:'1.25rem', border:'1px solid var(--color-border-default)', textDecoration:'none', display:'block' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+              <p style={{ color:'var(--color-text-primary)', fontWeight:600 }}>{c.name}</p>
+              {c.isPrivate && <span style={{ fontSize:'0.7rem', background:'var(--color-bg-elevated)', color:'var(--color-text-muted)', padding:'0.2rem 0.5rem', borderRadius:'999px' }}>Private</span>}
             </div>
-            <p className="text-gray-500 text-sm mt-1 line-clamp-2">{c.description ?? 'No description'}</p>
-            <div className="flex gap-4 mt-3 text-xs text-gray-400">
-              <span> {c._count?.members ?? 0} members</span>
-              <span> {c._count?.notes ?? 0} notes</span>
+            <p style={{ color:'var(--color-text-secondary)', fontSize:'0.85rem', marginTop:'0.4rem' }}>{c.description ?? 'No description'}</p>
+            <div style={{ display:'flex', gap:'1rem', marginTop:'0.75rem', color:'var(--color-text-muted)', fontSize:'0.75rem' }}>
+              <span>👥 {c._count?.members ?? 0}</span>
+              <span>📝 {c._count?.notes ?? 0}</span>
             </div>
           </Link>
         ))}
-        {!loading && communities.length === 0 && <p className="text-gray-400">No communities yet.</p>}
+        {!loading && communities.length===0 && <p style={{ color:'var(--color-text-muted)' }}>No communities yet.</p>}
       </div>
     </div>
   );

@@ -1,43 +1,45 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-interface User { id: string; name: string; email: string; avatarUrl?: string; bio?: string; }
-interface Note { id: string; title: string; status: string; createdAt: string; }
+interface User { id:string; name:string; email:string; avatarUrl?:string; bio?:string; }
+interface Note { id:string; title:string; status:string; createdAt:string; }
+
+const card = { background:'var(--color-bg-surface)', borderRadius:'0.75rem', padding:'1.25rem', border:'1px solid var(--color-border-default)', marginBottom:'0.75rem' };
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User|null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
 
   useEffect(() => {
-    fetch('/api/users/me').then(r => r.json()).then(setUser).catch(() => {});
-    fetch('/api/notes/mine').then(r => r.json()).then(setNotes).catch(() => {});
+    fetch('/api/users/me').then(r=>r.json()).then(setUser).catch(()=>{});
+    fetch('/api/notes/mine').then(r=>r.json()).then(setNotes).catch(()=>{});
   }, []);
 
+  const statusColor = (s:string) => s==='APPROVED'?'#4ADE80':s==='PENDING'?'#FBBF24':'#F87171';
+
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="bg-white rounded-xl p-6 shadow-sm mb-6 flex items-center gap-6">
-        <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-3xl">
-          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-20 h-20 rounded-full object-cover" /> : ''}
+    <div style={{ maxWidth:'720px', margin:'0 auto' }}>
+      <div style={{ ...card, display:'flex', alignItems:'center', gap:'1.5rem', marginBottom:'1.5rem' }}>
+        <div style={{ width:'72px', height:'72px', borderRadius:'50%', background:'var(--color-primary-muted)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2rem', flexShrink:0 }}>
+          {user?.avatarUrl ? <img src={user.avatarUrl} style={{ width:'72px', height:'72px', borderRadius:'50%', objectFit:'cover' }} alt="" /> : '👤'}
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{user?.name ?? 'Loading...'}</h1>
-          <p className="text-gray-500">{user?.email}</p>
-          <p className="text-gray-600 mt-1">{user?.bio ?? 'No bio yet'}</p>
+          <h1 style={{ color:'var(--color-text-primary)', fontSize:'1.5rem', fontWeight:700 }}>{user?.name ?? 'Loading...'}</h1>
+          <p style={{ color:'var(--color-text-secondary)', fontSize:'0.875rem' }}>{user?.email}</p>
+          <p style={{ color:'var(--color-text-muted)', marginTop:'0.25rem', fontSize:'0.875rem' }}>{user?.bio ?? 'No bio yet'}</p>
         </div>
       </div>
-      <h2 className="text-lg font-semibold mb-4">My Notes ({notes.length})</h2>
-      <div className="grid gap-4">
-        {notes.length === 0 && <p className="text-gray-400">No notes yet. <a href="/notes/create" className="text-blue-600">Create one!</a></p>}
-        {notes.map(n => (
-          <div key={n.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <h3 className="font-medium">{n.title}</h3>
-              <p className="text-sm text-gray-400">{new Date(n.createdAt).toLocaleDateString()}</p>
-            </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${n.status === 'APPROVED' ? 'bg-green-100 text-green-700' : n.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{n.status}</span>
+      <h2 style={{ color:'var(--color-text-primary)', fontWeight:600, marginBottom:'1rem' }}>My Notes ({notes.length})</h2>
+      {notes.length===0 && <p style={{ color:'var(--color-text-muted)' }}>No notes yet. <a href="/notes/create" style={{ color:'var(--color-primary)' }}>Create one!</a></p>}
+      {notes.map(n => (
+        <div key={n.id} style={{ ...card, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <p style={{ color:'var(--color-text-primary)', fontWeight:500 }}>{n.title}</p>
+            <p style={{ color:'var(--color-text-muted)', fontSize:'0.75rem', marginTop:'0.25rem' }}>{new Date(n.createdAt).toLocaleDateString()}</p>
           </div>
-        ))}
-      </div>
+          <span style={{ fontSize:'0.75rem', padding:'0.25rem 0.75rem', borderRadius:'999px', background:'var(--color-bg-elevated)', color:statusColor(n.status) }}>{n.status}</span>
+        </div>
+      ))}
     </div>
   );
 }
