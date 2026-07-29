@@ -91,7 +91,6 @@ function NoteViewRow({ note, index }: { note: NoteAnalytics; index: number }) {
     );
 }
 
-}
 
 export default function AnalyticsPage() {
   return (
