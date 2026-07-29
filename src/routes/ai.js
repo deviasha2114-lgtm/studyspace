@@ -1,7 +1,9 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { chat, getSessions } = require('../controllers/aiController');
-const { authenticateRequired } = require('../middleware/auth');
-router.post('/chat', authenticateRequired, chat);
-router.get('/sessions/:noteId', authenticateRequired, getSessions);
+const { authenticate } = require('../middleware/auth');
+
+router.post('/chat', authenticate, chat);
+router.get('/sessions/:noteId', authenticate, getSessions);
+
 module.exports = router;
