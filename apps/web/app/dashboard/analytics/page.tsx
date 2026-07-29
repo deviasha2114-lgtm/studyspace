@@ -157,4 +157,4 @@ function AnalyticsContent() {
     );
 }
 
-export { AnalyticsPageWrapper as default }
+export default AnalyticsContent
