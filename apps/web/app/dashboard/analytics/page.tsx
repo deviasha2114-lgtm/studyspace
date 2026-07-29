@@ -156,3 +156,5 @@ function AnalyticsContent() {
         </div>
     );
 }
+
+export { AnalyticsPageWrapper as default }
