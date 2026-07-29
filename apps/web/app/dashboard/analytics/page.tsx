@@ -6,9 +6,6 @@ import { Suspense } from "react";
 
 function AnalyticsContent() {
 
-import { useState, useEffect, Suspense } from "react";
-import { useSession } from "next-auth/react";
-
 interface UserAnalytics {
     user: { id: string; name: string; avatarUrl: string | null };
     stats: { totalNotes: number; totalViews: number; followers: number; following: number; communities: number };
