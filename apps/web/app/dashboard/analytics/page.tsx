@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 
 interface UserAnalytics {
@@ -91,7 +91,7 @@ function NoteViewRow({ note, index }: { note: NoteAnalytics; index: number }) {
     );
 }
 
-export default function AnalyticsPage() {
+function AnalyticsPage() {
     const { data: session } = useSession();
     const [userAnalytics, setUserAnalytics] = useState<UserAnalytics | null>(null);
     const [noteAnalytics, setNoteAnalytics] = useState<NoteAnalytics[]>([]);
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
         <div className="min-h-screen bg-zinc-950 text-zinc-100">
             <div className="max-w-3xl mx-auto px-4 py-8">
                 <div className="mb-8"><h1 className="text-2xl font-bold text-zinc-100 mb-1">Analytics</h1><p className="text-sm text-zinc-500">Your content performance at a glance</p></div>
-                {error && <div className="rounded-xl bg-red-950/40 border border-red-800/50 p-4 mb-6 flex items-center gap-3"><svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><p className="text-sm text-red-300">{error}. Try refreshing the page.</p></div>}
+                {error && <div className="rounded-xl bg-red-950/40 border border-red-800/50 p-4 mb-6 flex items-center gap-3"><svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><p className="text-sm text-red-300">{error}. Try refreshing.</p></div>}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">{statCards.map((card) => <StatCard key={card.label} label={card.label} value={card.value} icon={card.icon} accent={card.accent} loading={loading} />)}</div>
                 <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-6 mb-6">
                     <div className="flex items-center justify-between mb-6">
@@ -154,5 +154,13 @@ export default function AnalyticsPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function AnalyticsPageWrapper() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-zinc-950" />}>
+            <AnalyticsPage />
+        </Suspense>
     );
 }
