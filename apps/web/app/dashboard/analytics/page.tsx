@@ -158,3 +158,11 @@ function AnalyticsContent() {
 }
 
 export default AnalyticsContent
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <AnalyticsContent />
+    </Suspense>
+  );
+}
