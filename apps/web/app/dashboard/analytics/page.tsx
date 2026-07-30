@@ -24,7 +24,10 @@ interface UserStats {
 }
 
 function AnalyticsContent() {
-  const { data: session, status } = useSession();
+  const sessionResult = useSession();
+  const session = sessionResult?.data;
+  const status = sessionResult?.status;
+  if (status === "loading") return null;
   if (status === "loading") return null;
   const [stats, setStats] = useState<UserStats | null>(null);
   const [notes, setNotes] = useState<NoteAnalytics[]>([]);
