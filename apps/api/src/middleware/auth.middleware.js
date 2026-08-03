@@ -25,7 +25,7 @@ const authenticate = (req, res, next) => {
 /**
  * 🔒 FIX 1: authenticateSocket — Socket.IO io.use() middleware
  * Har naye socket connection pe JWT verify karta hai.
- * Token client se socket.handshake.auth.token mein aana chahiye.
+ * Token client se socket.handshake.auth.token mein aana chahiyo.
  *
  * Client-side usage:
  *   const socket = io(URL, { auth: { token: localStorage.getItem('jwt') } });
@@ -50,4 +50,7 @@ const authenticateSocket = (socket, next) => {
   }
 };
 
-module.exports = { authenticate, authenticateSocket };
+// Alias for backward compatibility
+const protect = authenticate;
+
+module.exports = { authenticate, authenticateSocket, protect };

@@ -1,20 +1,36 @@
-'use client';
-import Link from 'next/link';
+import { Header } from '@/components/header';
+import { Sidebar } from '@/components/sidebar';
+import { Nav } from '@/components/nav';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div style={{ minHeight:'100vh', display:'flex', background:'var(--color-bg-base)' }}>
-      <aside style={{ width:'240px', background:'var(--color-bg-surface)', borderRight:'1px solid var(--color-border-default)', display:'flex', flexDirection:'column', padding:'1.5rem 1rem', gap:'0.25rem', position:'fixed', height:'100vh' }}>
-        <h1 style={{ color:'var(--color-primary)', fontWeight:800, fontSize:'1.25rem', marginBottom:'1.5rem', paddingLeft:'0.75rem' }}>StudySpace</h1>
-        <Link href="/profile" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem' }}>🏠 Home</Link>
-        <Link href="/notes" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem' }}>📝 Notes</Link>
-        <Link href="/notes/create" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem' }}>➕ Create Note</Link>
-        <Link href="/communities" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem' }}>👥 Communities</Link>
-        <Link href="/live" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem' }}>🔴 Live Study</Link>
-        <Link href="/search" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem' }}>🔍 Search</Link>
-        <Link href="/profile" style={{ padding:'0.6rem 0.75rem', borderRadius:'0.5rem', color:'var(--color-text-secondary)', textDecoration:'none', fontSize:'0.9rem', marginTop:'auto' }}>👤 Profile</Link>
-      </aside>
-      <main style={{ marginLeft:'240px', flex:1, padding:'2rem' }}>{children}</main>
-    </div>
+    <>
+      <Header />
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Sidebar - Hidden on mobile, visible on tablet and desktop */}
+        <aside className="hidden md:block w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+          <Sidebar />
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col">
+          {/* Horizontal Nav (hidden on mobile, visible on tablet and desktop) */}
+          <div className="hidden md:block border-b border-gray-200 dark:border-gray-700">
+            <Nav />
+          </div>
+
+          {/* Page Content */}
+          <main className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

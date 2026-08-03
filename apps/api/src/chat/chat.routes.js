@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { authenticate } = require('../middleware/auth.middleware');
 const { isMember } = require('../middleware/isMember.middleware');
 const { chatRateLimiter } = require('../middleware/rateLimiter.middleware');
-const { getMessages, sendMessage } = require('../controllers/chat.controller');
+const { getMessages, sendMessage } = require('./chat.controller');
 
 // All chat routes require authentication
 router.use(authenticate);

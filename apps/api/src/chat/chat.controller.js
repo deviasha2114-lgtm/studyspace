@@ -1,5 +1,5 @@
-const chatService = require('../services/chat.service');
-const { getIO } = require('../socket');
+const chatService = require('./chat.service');
+const { getIO } = require('../index');
 
 /**
  * GET /api/chat/:communityId/messages?page=&limit=&cursor=
