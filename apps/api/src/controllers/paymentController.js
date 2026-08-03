@@ -1,11 +1,18 @@
 const { PrismaClient } = require('@prisma/client');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Razorpay = require('razorpay');
+const crypto = require('crypto');
 const prisma = new PrismaClient();
 
-// Create a PaymentIntent for the plan amount
-const createPaymentIntent = async (req, res) => {
+// Initialize Razorpay instance
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// Create an order for payment
+const createOrder = async (req, res) => {
   try {
-    const { amount, currency = 'usd' } = req.body;
+    const { amount, currency = 'INR' } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -13,79 +20,87 @@ const createPaymentIntent = async (req, res) => {
       return res.status(400).json({ error: 'Valid amount is required' });
     }
 
-    // Create a PaymentIntent with the order amount and currency
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount), // amount in cents
+    // Convert amount to paise (since Razorpay expects amount in smallest currency unit)
+    const amountInPaise = Math.round(amount * 100);
+
+    // Create a new order in Razorpay
+    const options = {
+      amount: amountInPaise,
       currency,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
+      receipt: `order_${Date.now()}`,
+      payment_capture: 1, // Auto-capture payment
+    };
+
+    const order = await razorpay.orders.create(options);
 
     // Optionally, create a pending payment record
     const payment = await prisma.payment.create({
       data: {
         userId,
-        amount: Math.round(amount),
+        amount: amountInPaise, // Store in paise for consistency
         currency: currency.toUpperCase(),
         status: 'PENDING',
-        // We'll store the Stripe PaymentIntent ID in razorpayPaymentId field for now
-        razorpayPaymentId: paymentIntent.id,
+        razorpayOrderId: order.id,
       },
     });
 
     res.json({
       success: true,
-      clientSecret: paymentIntent.client_secret,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
       paymentId: payment.id,
     });
   } catch (error) {
-    console.error('Create payment intent error:', error);
-    res.status(500).json({ error: 'Failed to create payment intent' });
+    console.error('Create order error:', error);
+    res.status(500).json({ error: 'Failed to create payment order' });
   }
 };
 
-// Webhook endpoint for Stripe
-const paymentWebhook = async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
+// Verify payment signature
+const verifyPayment = async (req, res) => {
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.log(`⚠️  Webhook signature verification failed.`, err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
 
-  // Handle the event
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      // Update payment record to success
+    // Create HMAC signature
+    const generated_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
+
+    // Verify signature
+    if (generated_signature === razorpay_signature) {
+      // Payment is valid, update payment status
       await prisma.payment.updateMany({
-        where: { razorpayPaymentId: paymentIntent.id },
-        data: { status: 'SUCCESS' },
+        where: { razorpayOrderId: razorpay_order_id },
+        data: {
+          status: 'SUCCESS',
+          razorpayPaymentId: razorpay_payment_id,
+        },
       });
-      // Optionally, you can fulfill the order here.
-      break;
-    case 'payment_intent.payment_failed':
-      const failedIntent = event.data.object;
+
+      res.json({
+        success: true,
+        message: 'Payment verified successfully',
+      });
+    } else {
+      // Invalid signature
       await prisma.payment.updateMany({
-        where: { razorpayPaymentId: failedIntent.id },
+        where: { razorpayOrderId: razorpay_order_id },
         data: { status: 'FAILED' },
       });
-      break;
-    // ... handle other event types
-    default:
-      console.log(`Unhandled event type ${event.type}`);
-  }
 
-  // Return a 200 response to acknowledge receipt of the event
-  res.json({ received: true });
+      res.status(400).json({ error: 'Invalid payment signature' });
+    }
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    res.status(500).json({ error: 'Payment verification failed' });
+  }
 };
 
 // Subscribe to a plan
@@ -119,35 +134,88 @@ const subscribeToPlan = async (req, res) => {
       return res.status(400).json({ error: 'User already has an active subscription' });
     }
 
-    // Create a PaymentIntent for the plan price
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: plan.price, // price in cents
-      currency: 'usd',
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
+    // Create a Razorpay order for the plan price
+    const amountInPaise = plan.price * 100; // Convert to paise
+    const orderOptions = {
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `sub_${Date.now()}`,
+      payment_capture: 1,
+    };
 
-    // Confirm the PaymentIntent using a test payment method that always succeeds
-    // In test mode, you can use pm_card_visa for a successful payment
-    const confirmedIntent = await stripe.paymentIntents.confirm(paymentIntent.id, {
-      payment_method: 'pm_card_visa',
-    });
+    const order = await razorpay.orders.create(orderOptions);
 
-    if (confirmedIntent.status !== 'succeeded') {
-      throw new Error('Payment not successful');
-    }
-
-    // Update payment record with success status
+    // Create a pending payment record
     const payment = await prisma.payment.create({
       data: {
         userId,
-        amount: plan.price,
-        currency: 'USD',
-        status: 'SUCCESS',
-        razorpayPaymentId: confirmedIntent.id, // Stripe PaymentIntent ID
+        amount: amountInPaise,
+        currency: 'INR',
+        status: 'PENDING',
+        razorpayOrderId: order.id,
       },
     });
+
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+      paymentId: payment.id,
+      planId: plan.id,
+    });
+  } catch (error) {
+    console.error('Subscribe to plan error:', error);
+    res.status(500).json({ error: 'Failed to initiate subscription payment' });
+  }
+};
+
+// Handle subscription confirmation after payment
+const confirmSubscription = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      planId,
+      paymentId,
+    } = req.body;
+
+    // Verify payment signature
+    const generated_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
+
+    if (generated_signature !== razorpay_signature) {
+      // Invalid signature
+      await prisma.payment.updateMany({
+        where: { razorpayOrderId: razorpay_order_id },
+        data: { status: 'FAILED' },
+      });
+
+      return res.status(400).json({ error: 'Invalid payment signature' });
+    }
+
+    // Payment is valid, update payment status
+    const payment = await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'SUCCESS',
+        razorpayPaymentId: razorpay_payment_id,
+      },
+    });
+
+    // Find the plan to get details
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
 
     // Create subscription
     const subscription = await prisma.subscription.create({
@@ -155,6 +223,7 @@ const subscribeToPlan = async (req, res) => {
         userId,
         planId,
         active: true,
+        razorpaySubscriptionId: razorpay_payment_id, // Using payment ID as subscription ID for simplicity
         // startDate set by default
         // Optionally set endDate based on interval
       },
@@ -169,8 +238,8 @@ const subscribeToPlan = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Subscribe to plan error:', error);
-    res.status(500).json({ error: 'Failed to subscribe to plan' });
+    console.error('Confirm subscription error:', error);
+    res.status(500).json({ error: 'Failed to confirm subscription' });
   }
 };
 
@@ -230,10 +299,69 @@ const cancelSubscription = async (req, res) => {
   }
 };
 
+// Webhook endpoint for Razorpay
+const paymentWebhook = async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    // Get the signature from headers
+    const shasum = crypto.createHmac('sha256', secret);
+    shasum.update(JSON.stringify(req.body));
+    const digest = shasum.digest('hex');
+
+    // Compare signature
+    if (digest !== req.headers['x-razorpay-signature']) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    // Handle the event
+    const event = req.body;
+
+    switch (event.event) {
+      case 'payment.captured':
+        const paymentEntity = event.payload.payment.entity;
+        // Update payment record to success
+        await prisma.payment.updateMany({
+          where: { razorpayPaymentId: paymentEntity.id },
+          data: { status: 'SUCCESS' },
+        });
+        break;
+
+      case 'payment.failed':
+        const failedPayment = event.payload.payment.entity;
+        await prisma.payment.updateMany({
+          where: { razorpayPaymentId: failedPayment.id },
+          data: { status: 'FAILED' },
+        });
+        break;
+
+      case 'order.paid':
+        const orderEntity = event.payload.order.entity;
+        // Update payment record if needed
+        await prisma.payment.updateMany({
+          where: { razorpayOrderId: orderEntity.id },
+          data: { status: 'SUCCESS' },
+        });
+        break;
+
+      default:
+        console.log(`Unhandled event type ${event.event}`);
+    }
+
+    // Return a 200 response to acknowledge receipt of the event
+    res.json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+};
+
 module.exports = {
-  createPaymentIntent,
-  paymentWebhook,
+  createOrder,
+  verifyPayment,
   subscribeToPlan,
+  confirmSubscription,
   getSubscription,
   cancelSubscription,
+  paymentWebhook,
 };

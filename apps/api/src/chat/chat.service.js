@@ -61,15 +61,16 @@ const getMessages = async (communityId, { cursor, limit = 30, page = 1 } = {}) =
 /**
  * Save a new message to the database.
  */
-const saveMessage = async ({ communityId, senderId, content, type = 'text', attachments = [], replyTo = null }) => {
+const saveMessage = async ({ communityId, senderId, content, type = 'text', attachments = [], replyTo = null, reactions = [] }) => {
   const message = await prisma.message.create({
     data: {
       communityId,
       senderId,
       content,
       type,
-      // Note: We don't have attachments or replyTo fields in our current Message model
-      // These would need to be added to the schema if needed
+      attachments: attachments.length > 0 ? attachments : null,
+      replyTo: replyTo || null,
+      reactions: reactions.length > 0 ? reactions : null,
     },
     include: {
       sender: {
@@ -85,4 +86,113 @@ const saveMessage = async ({ communityId, senderId, content, type = 'text', atta
   return message;
 };
 
-module.exports = { getMessages, saveMessage };
+/**
+ * Add a reaction to a message
+ * @param {string} communityId - The community ID
+ * @param {string} messageId - The message ID
+ * @param {string} userId - The user ID adding the reaction
+ * @param {string} emoji - The emoji to react with
+ * @returns {Promise<Object>} The updated message
+ */
+const addReaction = async (communityId, messageId, userId, emoji) => {
+  // Find the message to ensure it exists and belongs to the community
+  const message = await prisma.message.findFirst({
+    where: {
+      id: messageId,
+      communityId
+    }
+  });
+
+  if (!message) {
+    throw new Error('Message not found');
+  }
+
+  // Parse existing reactions or initialize empty array
+  const reactions = message.reactions ? JSON.parse(message.reactions) : [];
+
+  // Check if user has already reacted with this emoji
+  const existingReactionIndex = reactions.findIndex(
+    r => r.userId === userId && r.emoji === emoji
+  );
+
+  // If user hasn't reacted with this emoji, add the reaction
+  if (existingReactionIndex === -1) {
+    reactions.push({ userId, emoji });
+  }
+  // If they have, we could remove it (toggle) but for now we'll keep it as add-only
+  // The delete endpoint handles removal
+
+  // Update the message with new reactions
+  const updatedMessage = await prisma.message.update({
+    where: {
+      id: messageId
+    },
+    data: {
+      reactions: reactions.length > 0 ? JSON.stringify(reactions) : null
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true
+        }
+      }
+    }
+  });
+
+  return updatedMessage;
+};
+
+/**
+ * Remove a reaction from a message
+ * @param {string} communityId - The community ID
+ * @param {string} messageId - The message ID
+ * @param {string} userId - The user ID removing the reaction
+ * @param {string} emoji - The emoji to remove
+ * @returns {Promise<Object>} The updated message
+ */
+const removeReaction = async (communityId, messageId, userId, emoji) => {
+  // Find the message to ensure it exists and belongs to the community
+  const message = await prisma.message.findFirst({
+    where: {
+      id: messageId,
+      communityId
+    }
+  });
+
+  if (!message) {
+    throw new Error('Message not found');
+  }
+
+  // Parse existing reactions or initialize empty array
+  const reactions = message.reactions ? JSON.parse(message.reactions) : [];
+
+  // Filter out the reaction to remove (if it exists)
+  const filteredReactions = reactions.filter(
+    r => !(r.userId === userId && r.emoji === emoji)
+  );
+
+  // Update the message with new reactions
+  const updatedMessage = await prisma.message.update({
+    where: {
+      id: messageId
+    },
+    data: {
+      reactions: filteredReactions.length > 0 ? JSON.stringify(filteredReactions) : null
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true
+        }
+      }
+    }
+  });
+
+  return updatedMessage;
+};
+
+module.exports = { getMessages, saveMessage, addReaction, removeReaction };

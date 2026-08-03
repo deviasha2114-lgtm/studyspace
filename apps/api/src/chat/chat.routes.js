@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { authenticate } = require('../middleware/auth.middleware');
 const { isMember } = require('../middleware/isMember.middleware');
 const { chatRateLimiter } = require('../middleware/rateLimiter.middleware');
-const { getMessages, sendMessage } = require('./chat.controller');
+const { getMessages, sendMessage, addReaction, removeReaction } = require('./chat.controller');
 
 // All chat routes require authentication
 router.use(authenticate);
@@ -20,5 +20,17 @@ router.get('/:communityId/messages', isMember, getMessages);
  * 🔒 isMember check added — only members can send messages
  */
 router.post('/:communityId/messages', isMember, chatRateLimiter, sendMessage);
+
+/**
+ * POST /api/chat/:communityId/messages/:messageId/reactions
+ * Add a reaction to a message
+ */
+router.post('/:communityId/messages/:messageId/reactions', isMember, addReaction);
+
+/**
+ * DELETE /api/chat/:communityId/messages/:messageId/reactions
+ * Remove a reaction from a message
+ */
+router.delete('/:communityId/messages/:messageId/reactions', isMember, removeReaction);
 
 module.exports = router;
