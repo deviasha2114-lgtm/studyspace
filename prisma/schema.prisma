@@ -126,6 +126,10 @@ model User {
   flashcardSets          FlashcardSet[]
   quizAttempts           QuizAttempt[]
   studySessions          FlashcardStudySession[]
+  sentRequests           FriendRequest[] @relation("sentRequests")
+  receivedRequests       FriendRequest[] @relation("receivedRequests")
+  friends                Friend[]        @relation("userFriends")
+  friendOf               Friend[]        @relation("friendFriends")
 }
 
 model Follow {
@@ -138,6 +142,20 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation("userFriends", fields: [userId], references: [id])
+  friend    User     @relation("friendFriends", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
 }
 
 model Community {
@@ -211,6 +229,14 @@ model Report {
 model Message {
   id          String    @id @default(cuid())
   content     String
+  // Type of message: text, image, file, etc.
+  type        String    @default('text')
+  // Attachments: array of objects, each containing url, type (image, pdf, etc.), name, size
+  attachments Json?
+  // ID of the message being replied to (for threaded replies)
+  replyTo     String?
+  // Reactions: array of objects { userId, emoji, createdAt }
+  reactions   Json?
   senderId    String
   communityId String
   createdAt   DateTime  @default(now())
@@ -368,6 +394,21 @@ model Profile {
   user        User     @relation("userProfile", fields: [userId], references: [id])
 
   @@unique([userId])
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  senderId  String
+  receiverId String
+  status    String   @default('PENDING') // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+
+  sender    User     @relation("sentRequests", fields: [senderId], references: [id])
+  receiver  User     @relation("receivedRequests", fields: [receiverId], references: [id])
+
+  @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
 }
 
 // NEW MODELS FOR FLASHCARDS AND PERFORMANCE TRACKING

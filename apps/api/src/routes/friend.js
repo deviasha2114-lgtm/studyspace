@@ -11,6 +11,7 @@ router.put('/request/:requestId/respond', friendController.respondToFriendReques
 
 // Friends list (protected)
 router.get('/friends', friendController.getFriends);
+router.delete('/:friendId', friendController.removeFriend);
 
 // Followers/Following (mixed visibility)
 router.get('/:userId/followers', friendController.getFollowers);

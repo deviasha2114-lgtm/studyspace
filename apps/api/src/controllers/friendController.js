@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const friendService = require('../friend.service');
 
 // Send friend request
 exports.sendFriendRequest = async (req, res) => {
@@ -47,18 +46,12 @@ exports.sendFriendRequest = async (req, res) => {
     }
 
     // Create friend request
-    const friendRequest = await prisma.friendRequest.create({
-      data: {
-        senderId: requesterId,
-        receiverId: userId,
-        status: 'PENDING'
-      }
-    });
+    const friendRequest = await friendService.sendFriendRequest(requesterId, userId);
 
     res.status(201).json(friendRequest);
   } catch (error) {
     console.error('Error sending friend request:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -67,30 +60,12 @@ exports.getFriendRequests = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const requests = await prisma.friendRequest.findMany({
-      where: {
-        receiverId: userId,
-        status: 'PENDING'
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            image: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const requests = await friendService.getFriendRequests(userId);
 
     res.json(requests);
   } catch (error) {
     console.error('Error fetching friend requests:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -101,60 +76,12 @@ exports.respondToFriendRequest = async (req, res) => {
     const { action } = req.body; // 'accept' or 'reject'
     const userId = req.user.id; // Current user
 
-    const friendRequest = await prisma.friendRequest.findUnique({
-      where: { id: requestId },
-      include: {
-        sender: true,
-        receiver: true
-      }
-    });
+    const result = await friendService.respondToFriendRequest(requestId, userId, action);
 
-    if (!friendRequest) {
-      return res.status(404).json({ error: 'Friend request not found' });
-    }
-
-    if (friendRequest.receiverId !== userId) {
-      return res.status(403).json({ error: 'Not authorized to respond to this request' });
-    }
-
-    if (action === 'accept') {
-      // Update request status
-      await prisma.friendRequest.update({
-        where: { id: requestId },
-        data: { status: 'ACCEPTED' }
-      });
-
-      // Create friendship (mutual)
-      await prisma.friend.create({
-        data: {
-          userId: friendRequest.senderId,
-          friendId: friendRequest.receiverId
-        }
-      });
-
-      // Also create reverse relationship for easier querying
-      await prisma.friend.create({
-        data: {
-          userId: friendRequest.receiverId,
-          friendId: friendRequest.senderId
-        }
-      });
-
-      res.json({ message: 'Friend request accepted', friendRequest });
-    } else if (action === 'reject') {
-      // Update request status
-      await prisma.friendRequest.update({
-        where: { id: requestId },
-        data: { status: 'REJECTED' }
-      });
-
-      res.json({ message: 'Friend request rejected', friendRequest });
-    } else {
-      return res.status(400).json({ error: 'Invalid action. Use "accept" or "reject"' });
-    }
+    res.json(result);
   } catch (error) {
     console.error('Error responding to friend request:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(400).json({ error: error.message || 'Bad request' });
   }
 };
 
@@ -163,36 +90,27 @@ exports.getFriends = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const friends = await prisma.friend.findMany({
-      where: { userId: userId },
-      include: {
-        friend: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            image: true,
-            Profile: {
-              select: {
-                bio: true,
-                classLevel: true,
-                board: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const friends = await friendService.getFriends(userId);
 
-    // Extract just the friend data
-    const friendList = friends.map(f => f.friend);
-    res.json(friendList);
+    res.json(friends);
   } catch (error) {
     console.error('Error fetching friends:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+};
+
+// Remove friend
+exports.removeFriend = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { friendId } = req.params;
+
+    const result = await friendService.removeFriend(userId, friendId);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error removing friend:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -239,7 +157,7 @@ exports.getFollowers = async (req, res) => {
     res.json(followerList);
   } catch (error) {
     console.error('Error fetching followers:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -271,7 +189,7 @@ exports.getFollowing = async (req, res) => {
     res.json(followingList);
   } catch (error) {
     console.error('Error fetching following:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -313,7 +231,7 @@ exports.followUser = async (req, res) => {
     res.status(201).json(follow);
   } catch (error) {
     console.error('Error following user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -342,7 +260,7 @@ exports.unfollowUser = async (req, res) => {
     res.json({ message: 'Unfollowed successfully' });
   } catch (error) {
     console.error('Error unfollowing user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
@@ -421,6 +339,6 @@ exports.checkFriendshipStatus = async (req, res) => {
     res.json({ status: 'none' });
   } catch (error) {
     console.error('Error checking friendship status:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
