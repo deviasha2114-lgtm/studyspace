@@ -1,4 +1,5 @@
-const { getDB } = require('../config/db');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 /**
  * isMember middleware
@@ -17,13 +18,12 @@ const isMember = async (req, res, next) => {
       return res.status(400).json({ error: 'communityId is required' });
     }
 
-    const db = getDB();
-
-    // Check if user is an active member of this community
-    const membership = await db.collection('communityMembers').findOne({
-      communityId,
-      userId: userId.toString(),
-      status: 'active',
+    // Check if user is a member of this community
+    const membership = await prisma.communityMember.findFirst({
+      where: {
+        userId,
+        communityId
+      }
     });
 
     if (!membership) {

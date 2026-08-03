@@ -215,3 +215,85 @@ body {
     line-height: 1.6;
   }
 }
+
+/* 🌈 Base Layout */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #4f7fff, #6366f1, #8b5cf6);
+  color: #1a1a1a;
+  overflow-x: hidden;
+}
+
+/* 🔹 Container */
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+  perspective: 1200px;
+}
+
+/* 🧊 Card */
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.card:hover {
+  transform: translateY(-12px) translateZ(20px);
+}
+
+/* 👤 Profile */
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b6b, #ffa94d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+/* 📊 Stats */
+.stat {
+  background: linear-gradient(135deg, #65c3ff, #4f7fff);
+  color: white;
+  border-radius: 12px;
+  text-align: center;
+  padding: 0.8rem;
+  box-shadow: 0 4px 12px rgba(79, 127, 255, 0.2);
+}
+
+/* 🧠 AI Solver */
+.ai-solver {
+  background: linear-gradient(135deg, #4f7fff, #8b5cf6);
+  color: white;
+  border-radius: 24px;
+  padding: 1.5rem;
+}
+
+/* 🏆 Leaderboard */
+.lb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.lb-item:hover {
+  background: rgba(79, 127, 255, 0.05);
+}
+
+/* 📱 Responsive */
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+}

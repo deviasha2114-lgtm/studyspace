@@ -1,14 +1,439 @@
-﻿// StudySpace — Prisma Schema
-// Sprint 1-4 + Sprint 5
-// DB: PostgreSQL
-
 generator client {
   provider = "prisma-client-js"
+  output   = "../apps/api/node_modules/@prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model StudyRoom {
+  id              String                 @id @default(cuid())
+  title           String
+  description     String?
+  type            StudyRoomType
+  status          StudyRoomStatus        @default(ACTIVE)
+  scheduledAt     DateTime?
+  duration        Int
+  maxParticipants Int
+  hostId          String
+  isPublic        Boolean                @default(true)
+  password        String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  host            User                   @relation("host", fields: [hostId], references: [id])
+  accessList      StudyRoomAccess[]
+  messages        StudyRoomMessage[]
+  participants    StudyRoomParticipant[] @relation("studyRoom")
+  settings        StudyRoomSettings?
+
+  @@index([type, status])
+  @@index([hostId])
+}
+
+model StudyRoomMessage {
+  id          String    @id @default(cuid())
+  content     String
+  isPinned    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  senderId    String
+  studyRoomId String
+  sender      User      @relation("sender", fields: [senderId], references: [id])
+  studyRoom   StudyRoom @relation(fields: [studyRoomId], references: [id])
+
+  @@index([studyRoomId, createdAt])
+}
+
+model StudyRoomSettings {
+  id               String    @id @default(cuid())
+  pomodoroWorkInt  Int       @default(25)
+  pomodoroBreakInt Int       @default(5)
+  ambientSound     String?
+  isChatEnabled    Boolean   @default(true)
+  isAudioEnabled   Boolean   @default(true)
+  isVideoEnabled   Boolean   @default(true)
+  maxVideoUsers    Int       @default(10)
+  studyRoomId      String    @unique
+  studyRoom        StudyRoom @relation(fields: [studyRoomId], references: [id])
+}
+
+model StudyRoomAccess {
+  id          String    @id @default(cuid())
+  grantedAt   DateTime  @default(now())
+  grantedById String
+  studyRoomId String
+  userId      String
+  grantedBy   User      @relation("grantedBy", fields: [grantedById], references: [id])
+  studyRoom   StudyRoom @relation(fields: [studyRoomId], references: [id])
+  user        User      @relation("user", fields: [userId], references: [id])
+
+  @@unique([studyRoomId, userId])
+  @@index([userId])
+}
+
+model StudyRoomParticipant {
+  id          String    @id @default(cuid())
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  goal        String?
+  goalMet     Boolean?
+  isFocusMode Boolean
+  userId      String
+  studyRoomId String
+  studyRoom   StudyRoom @relation("studyRoom", fields: [studyRoomId], references: [id])
+  user        User      @relation("user", fields: [userId], references: [id])
+
+  @@unique([userId, studyRoomId, joinedAt])
+  @@index([studyRoomId, joinedAt])
+  @@index([userId])
+}
+
+model User {
+  id                     String                 @id @default(cuid())
+  name                   String
+  email                  String                 @unique
+  avatarUrl              String?
+  bio                    String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  totalPoints            Int                    @default(0)
+  level                  Int                    @default(1)
+  dailyStreak            Int                    @default(0)
+  lastCheckInDate        DateTime?
+  role                   MemberRole             @default(MEMBER)
+  themePreference        String                 @default("SYSTEM")
+  aiSessions             AISession[]
+  communities            CommunityMember[]
+  following              Follow[]               @relation("follower")
+  followers              Follow[]               @relation("following")
+  messages               Message[]
+  notes                  Note[]
+  noteViews              NoteView[]
+  notifications          Notification[]
+  reports                Report[]
+  searchLogs             SearchLog[]
+  studyRoomHost          StudyRoom[]            @relation("host")
+  grantedStudyRoomAccess StudyRoomAccess[]      @relation("grantedBy")
+  studyRoomAccess        StudyRoomAccess[]      @relation("user")
+  studyRoomMessages      StudyRoomMessage[]     @relation("sender")
+  studyRoomParticipant   StudyRoomParticipant[] @relation("user")
+  videoRooms             VideoRoom[]
+  badges                 UserBadge[]            @relation("userBadges")
+  subscriptions          Subscription[]         @relation("userSubscriptions")
+  payments               Payment[]              @relation("userPayments")
+  profile                Profile?               @relation("userProfile")
+  flashcardSets          FlashcardSet[]
+  quizAttempts           QuizAttempt[]
+  studySessions          FlashcardStudySession[]
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("follower", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}
+
+model Community {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String?
+  coverUrl    String?
+  isPrivate   Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     CommunityMember[]
+  messages    Message[]
+  notes       Note[]
+  reports     Report[]
+  videoRooms  VideoRoom[]
+}
+
+model CommunityMember {
+  id          String     @id @default(cuid())
+  userId      String
+  communityId String
+  role        MemberRole @default(MEMBER)
+  joinedAt    DateTime   @default(now())
+  community   Community  @relation(fields: [communityId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@unique([userId, communityId])
+  @@index([communityId])
+}
+
+model Note {
+  id          String      @id @default(cuid())
+  title       String
+  content     String
+  fileUrl     String?
+  status      NoteStatus  @default(PENDING)
+  authorId    String
+  communityId String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  aiSessions  AISession[]
+  author      User        @relation(fields: [authorId], references: [id])
+  community   Community   @relation(fields: [communityId], references: [id])
+  noteViews   NoteView[]
+  reports     Report[]
+
+  @@index([communityId, status])
+  @@index([authorId])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String
+  target      ReportTarget
+  status      ReportStatus @default(OPEN)
+  reason      String
+  noteId      String?
+  communityId String?
+  reportedId  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  community   Community?   @relation(fields: [communityId], references: [id])
+  note        Note?        @relation(fields: [noteId], references: [id])
+  reporter    User         @relation(fields: [reporterId], references: [id])
+
+  @@index([status])
+  @@index([reporterId])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  content     String
+  senderId    String
+  communityId String
+  createdAt   DateTime  @default(now())
+  community   Community @relation(fields: [communityId], references: [id])
+  sender      User      @relation(fields: [senderId], references: [id])
+
+  @@index([communityId, createdAt])
+}
+
+model VideoRoom {
+  id          String     @id @default(cuid())
+  hmsRoomId   String     @unique
+  communityId String?
+  createdById String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  community   Community? @relation(fields: [communityId], references: [id])
+  createdBy   User       @relation(fields: [createdById], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model SearchLog {
+  id        String     @id @default(cuid())
+  userId    String
+  query     String
+  type      SearchType
+  results   Int
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([query])
+}
+
+model NoteView {
+  id        String   @id @default(cuid())
+  noteId    String
+  userId    String
+  createdAt DateTime @default(now())
+  note      Note     @relation(fields: [noteId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([noteId, userId])
+  @@index([noteId])
+}
+
+model AISession {
+  id        String   @id @default(cuid())
+  userId    String
+  noteId    String
+  messages  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  note      Note     @relation(fields: [noteId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([noteId])
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  iconUrl     String?
+  criteria    Json
+  createdAt   DateTime @default(now())
+  earnedBy    UserBadge[] @relation("badgesEarned")
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  user      User     @relation("userBadges", fields: [userId], references: [id])
+  userId    String
+  badge     Badge    @relation("badgesEarned", fields: [badgeId], references: [id])
+  badgeId   String
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Int      // in cents (e.g., 999 for $9.99)
+  interval    String   // e.g., "month", "year"
+  features    Json     // array of feature strings or object with details
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  subscriptions Subscription[] @relation("subscriptionPlan")
+}
+
+model Subscription {
+  id             String   @id @default(cuid())
+  userId         String
+  planId         String
+  startDate      DateTime @default(now())
+  endDate        DateTime?
+  active         Boolean  @default(true)
+  razorpaySubscriptionId String? // or stripeSubscriptionId
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation("userSubscriptions", fields: [userId], references: [id])
+  plan           Plan     @relation("subscriptionPlan", fields: [planId], references: [id])
+  payments       Payment[] @relation("subscriptionPayments")
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  userId           String
+  subscriptionId   String?
+  amount           Int      // in cents
+  currency         String   @default("USD")
+  status           PaymentStatus
+  razorpayPaymentId String? // or stripePaymentId
+  paymentDate      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation("userPayments", fields: [userId], references: [id])
+  subscription     Subscription? @relation("subscriptionPayments", fields: [subscriptionId], references: [id])
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String
+  bio         String?
+  classLevel  String?
+  board       String?
+  competitiveExams Json?
+  studyGoals  String?
+  weeklyStudyHours  Int?
+  monthlyStudyHours Int?
+  yearlyStudyHours  Int?
+  totalStoreHours   Int?
+  chaptersCompleted Int?
+  subjectsProcess   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user        User     @relation("userProfile", fields: [userId], references: [id])
+
+  @@unique([userId])
+}
+
+// NEW MODELS FOR FLASHCARDS AND PERFORMANCE TRACKING
+
+// flashcard set
+model FlashcardSet {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id])
+  flashcards    Flashcard[] @relation("flashcardSet")
+  studySessions FlashcardStudySession[]
+  @@index([userId])
+}
+
+// flashcard
+model Flashcard {
+  id           String   @id @default(cuid())
+  question     String
+  answer       String
+  flashcardSetId String
+  flashcardSet FlashcardSet @relation("flashcardSet", fields: [flashcardSetId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([flashcardSetId])
+}
+
+// quiz attempt (to track quiz performance)
+model QuizAttempt {
+  id            String   @id @default(cuid())
+  userId        String
+  topic         String   // The topic of the quiz
+  score         Int      // Percentage correct (0-100)
+  totalQuestions Int
+  timeTaken     Int      // in seconds
+  attemptedAt   DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+  @@index([userId])
+  @@index([attemptedAt])
+}
+
+// flashcard study session
+model FlashcardStudySession {
+  id            String   @id @default(cuid())
+  userId        String
+  flashcardSetId String
+  flashcardSet  FlashcardSet @relation(fields: [flashcardSetId], references: [id])
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+  correctCount  Int      // Number of cards marked correct in this session
+  incorrectCount Int     // Number of cards marked incorrect
+  timeSpent     Int      // in seconds
+  user          User     @relation(fields: [userId], references: [id])
+  @@index([userId])
+  @@index([flashcardSetId])
+  @@index([startedAt])
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
 }
 
 enum MemberRole {
@@ -52,192 +477,16 @@ enum SearchType {
   ALL
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  avatarUrl     String?
-  bio           String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  communities       CommunityMember[]
-  notes             Note[]
-  reports           Report[]
-  messages          Message[]
-  videoRooms        VideoRoom[]
-  notifications     Notification[]
-  followers         Follow[] @relation("following")
-  following         Follow[] @relation("follower")
-  searchLogs        SearchLog[]
-  noteViews         NoteView[]
-  aiSessions        AISession[]
+enum StudyRoomType {
+  OPEN
+  SUBJECT
+  PRIVATE
+  BATCH
+  FOCUS
 }
 
-model Follow {
-  id          String   @id @default(cuid())
-  followerId  String
-  followingId String
-  createdAt   DateTime @default(now())
-
-  follower    User @relation("follower",  fields: [followerId],  references: [id])
-  following   User @relation("following", fields: [followingId], references: [id])
-
-  @@unique([followerId, followingId])
-  @@index([followingId])
-}
-
-model Community {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  coverUrl    String?
-  isPrivate   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  members    CommunityMember[]
-  notes      Note[]
-  reports    Report[]
-  messages   Message[]
-  videoRooms VideoRoom[]
-}
-
-model CommunityMember {
-  id          String      @id @default(cuid())
-  userId      String
-  communityId String
-  role        MemberRole  @default(MEMBER)
-  joinedAt    DateTime    @default(now())
-
-  user        User      @relation(fields: [userId],      references: [id])
-  community   Community @relation(fields: [communityId], references: [id])
-
-  @@unique([userId, communityId])
-  @@index([communityId])
-}
-
-model Note {
-  id          String     @id @default(cuid())
-  title       String
-  content     String
-  fileUrl     String?
-  status      NoteStatus @default(PENDING)
-  authorId    String
-  communityId String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  author      User      @relation(fields: [authorId],    references: [id])
-  community   Community @relation(fields: [communityId], references: [id])
-  reports     Report[]
-  noteViews   NoteView[]
-  aiSessions  AISession[]
-
-  @@index([communityId, status])
-  @@index([authorId])
-}
-
-model Report {
-  id          String       @id @default(cuid())
-  reporterId  String
-  target      ReportTarget
-  status      ReportStatus @default(OPEN)
-  reason      String
-  noteId      String?
-  communityId String?
-  reportedId  String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  reporter    User       @relation(fields: [reporterId],  references: [id])
-  note        Note?      @relation(fields: [noteId],      references: [id])
-  community   Community? @relation(fields: [communityId], references: [id])
-
-  @@index([status])
-  @@index([reporterId])
-}
-
-model Message {
-  id          String    @id @default(cuid())
-  content     String
-  senderId    String
-  communityId String
-  createdAt   DateTime  @default(now())
-
-  sender      User      @relation(fields: [senderId],    references: [id])
-  community   Community @relation(fields: [communityId], references: [id])
-
-  @@index([communityId, createdAt])
-}
-
-model VideoRoom {
-  id          String     @id @default(cuid())
-  hmsRoomId   String     @unique
-  communityId String?
-  createdById String
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-
-  community   Community? @relation(fields: [communityId], references: [id])
-  createdBy   User       @relation(fields: [createdById], references: [id])
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  link      String?
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-
-  user      User @relation(fields: [userId], references: [id])
-
-  @@index([userId, isRead])
-  @@index([userId, createdAt])
-}
-
-model SearchLog {
-  id        String     @id @default(cuid())
-  userId    String
-  query     String
-  type      SearchType
-  results   Int
-  createdAt DateTime   @default(now())
-
-  user      User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([query])
-}
-
-model NoteView {
-  id        String   @id @default(cuid())
-  noteId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  note      Note @relation(fields: [noteId], references: [id])
-  user      User @relation(fields: [userId], references: [id])
-
-  @@unique([noteId, userId])
-  @@index([noteId])
-}
-
-model AISession {
-  id        String   @id @default(cuid())
-  userId    String
-  noteId    String
-  messages  Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user      User @relation(fields: [userId], references: [id])
-  note      Note @relation(fields: [noteId], references: [id])
-
-  @@index([userId])
-  @@index([noteId])
+enum StudyRoomStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
 }

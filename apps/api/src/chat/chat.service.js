@@ -1,40 +1,60 @@
-const Message = require('../models/Message');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 /**
  * Fetch paginated messages for a community.
- * Uses cursor-based pagination on _id (stable, index-friendly).
+ * Uses cursor-based pagination on createdAt (stable, index-friendly).
  *
  * @param {string} communityId
  * @param {object} options - { cursor, limit, page }
- *   cursor  → ObjectId of last seen message (exclusive upper bound, older messages)
+ *   cursor  → ISO date string of last seen message (exclusive upper bound, older messages)
  *   page    → fallback offset-based page (if no cursor provided)
  *   limit   → number of messages to return
  */
 const getMessages = async (communityId, { cursor, limit = 30, page = 1 } = {}) => {
   limit = Math.min(parseInt(limit, 10), 100); // cap at 100
 
-  const query = { communityId, deletedAt: null };
+  const where = {
+    communityId,
+    // We don't have a deletedAt field in our Message model, but we can add it if needed
+    // For now, we'll assume all messages are active
+  };
 
+  // If cursor is provided, we want messages older than the cursor
   if (cursor) {
-    // cursor = _id of the oldest message the client already has
-    // fetch messages OLDER than cursor  ↓
-    query._id = { $lt: cursor };
+    where.createdAt = {
+      lt: new Date(cursor)
+    };
   }
 
-  const messages = await Message.find(query)
-    .sort({ _id: -1 }) // newest first within the window, reversed for display
-    .limit(limit)
-    .populate('sender', 'name avatar _id')
-    .populate('replyTo', 'content sender _id')
-    .lean();
+  const messages = await prisma.message.findMany({
+    where,
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc' // newest first
+    },
+    take: limit + 1 // get one extra to check if there are more
+  });
 
-  // nextCursor → the _id of the oldest message in this batch
-  const nextCursor = messages.length === limit ? messages[messages.length - 1]._id : null;
+  // Check if there are more messages
+  const hasMore = messages.length > limit;
+  // If we have more, remove the extra one
+  const data = hasMore ? messages.slice(0, -1) : messages;
+  // Get the oldest message timestamp for next cursor
+  const nextCursor = data.length > 0 ? data[data.length - 1].createdAt.toISOString() : null;
 
   return {
-    messages: messages.reverse(), // chronological order for the client
-    nextCursor,
-    hasMore: !!nextCursor,
+    messages: data.reverse(), // chronological order for the client
+    nextCursor: nextCursor,
+    hasMore: hasMore
   };
 };
 
@@ -42,20 +62,27 @@ const getMessages = async (communityId, { cursor, limit = 30, page = 1 } = {}) =
  * Save a new message to the database.
  */
 const saveMessage = async ({ communityId, senderId, content, type = 'text', attachments = [], replyTo = null }) => {
-  const message = await Message.create({
-    communityId,
-    sender: senderId,
-    content,
-    type,
-    attachments,
-    replyTo,
+  const message = await prisma.message.create({
+    data: {
+      communityId,
+      senderId,
+      content,
+      type,
+      // Note: We don't have attachments or replyTo fields in our current Message model
+      // These would need to be added to the schema if needed
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true
+        }
+      }
+    }
   });
 
-  // Return fully populated message for Socket.IO emit
-  return message.populate([
-    { path: 'sender', select: 'name avatar _id' },
-    { path: 'replyTo', select: 'content sender _id' },
-  ]);
+  return message;
 };
 
 module.exports = { getMessages, saveMessage };
