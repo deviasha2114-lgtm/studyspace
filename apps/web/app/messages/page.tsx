@@ -2,20 +2,27 @@ import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import axios from '@/lib/axios';
 import Link from 'next/link';
+import { useSocket } from '@/hooks/useSocket';
+import ChatUI from '@/components/Chat/ChatUI';
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [newMessage, setNewMessage] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [replyTo, setReplyTo] = useState<{ messageId: string; content: string; senderName: string } | null>(null);
+  const [emojiPickerVisible, setEmojiPickerVisible] = useState(false);
+  const [attachmentPickerVisible, setAttachmentPickerVisible] = useState(false);
 
   useEffect(() => {
-    const fetchConversations = async () => {
-      if (!user) return;
+    if (!user) return;
 
+    const fetchConversations = async () => {
       try {
         setLoading(true);
         const response = await axios.get('/api/messages/conversations', {
@@ -54,20 +61,39 @@ export default function MessagesPage() {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
-      setMessages(response.data.data || []);
+      // Transform the messages to match the expected format for ChatUI
+      const transformedMessages = response.data.data.map((msg: any) => ({
+        id: msg.id,
+        userId: msg.senderId,
+        username: msg.senderName,
+        content: msg.content,
+        timestamp: new msg.Date(msg.createdAt),
+        type: msg.type || 'text',
+        attachments: msg.attachments || [],
+        replyTo: msg.replyTo ? {
+          messageId: msg.replyTo,
+          content: msg.replyToContent || '',
+          senderName: msg.replyToSenderName || ''
+        } : undefined,
+        reactions: msg.reactions ? JSON.parse(msg.reactions) : []
+      }));
+      setMessages(transformedMessages);
     } catch (err: any) {
       console.error('Error fetching messages:', err);
     }
   };
 
-  const sendMessage = async () => {
-    if (!user || !selectedConversation || !newMessage.trim()) return;
+  const sendMessage = async (content: string, attachments: any[], replyToId?: string) => {
+    if (!user || !selectedConversation || (!content.trim() && attachments.length === 0)) return;
 
     try {
       await axios.post(
         `/api/messages/${selectedConversation.id}`,
         {
-          content: newMessage.trim()
+          content: content.trim(),
+          attachments,
+          replyTo: replyToId,
+          type: 'text',
         },
         {
           headers: {
@@ -78,11 +104,27 @@ export default function MessagesPage() {
 
       // Clear input and reload messages
       setNewMessage('');
+      setAttachments([]);
+      setReplyTo(null);
       loadMessagesForConversation(selectedConversation.id);
     } catch (err: any) {
       console.error('Error sending message:', err);
       alert('Failed to send message. Please try again.');
     }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setEmojiPickerVisible(false);
+  };
+
+  const handleAttachmentChange = (newAttachments: any[]) => {
+    setAttachments(newAttachments);
+    setAttachmentPickerVisible(false);
+  };
+
+  const handleCancelReply = () => {
+    setReplyTo(null);
   };
 
   if (loading) {
@@ -100,7 +142,7 @@ export default function MessagesPage() {
                       <span className="flex items-center space-x-2">
                         <div className="h-3 w-3 rounded-full bg-indigo-500"></div>
                         <span>Loading...</span>
-                      </div>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -116,7 +158,7 @@ export default function MessagesPage() {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
             <p>{error}</p>
           </div>
           <div className="space-y-6">
@@ -192,7 +234,7 @@ export default function MessagesPage() {
                       }}
                       className={`cursor-pointer p-3 rounded-lg ${
                         selectedConversation?.id === convo.id
-                        ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                          ? 'bg-indigo-50' : 'hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-start space-x-3">
@@ -259,103 +301,105 @@ export default function MessagesPage() {
                       </p>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      // Placeholder for call feature
-                      alert('Video call feature coming soon!');
-                    }}
-                    className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"
-                  >
-                    <span className="text-xl">📹</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Placeholder for video call
-                      alert('Voice call feature coming soon!');
-                    }}
-                    className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"
-                  >
-                    <span className="text-xl">📞</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Messages List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {messages.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No messages yet. Start the conversation!</p>
-                    {user && (
-                      <button
-                        onClick={() => {
-                          // Placeholder for starting conversation
-                          alert('Start conversation feature coming soon!');
-                        }}
-                        className="mt-4 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
-                      >
-                        Send First Message
-                      </button>
-                    )}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        // Placeholder for call feature
+                        alert('Video call feature coming soon!');
+                      }}
+                      className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"
+                    >
+                      <span className="text-xl">📹</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Placeholder for voice call
+                        alert('Voice call feature coming soon!');
+                      }}
+                      className="p-1 bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200"
+                    >
+                      <span className="text-xl">📞</span>
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {messages.map((message: any, index: number) => {
-                      const isOwnMessage = message.senderId === user.id;
-                      return (
-                        <div key={index} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2`}>
-                          <div className={`max-w-[80%] ${isOwnMessage ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-900'} rounded-lg px-4 py-2`}
-                               >
-                            <div className="flex items-center space-x-2 mb-1">
-                              {!isOwnMessage && (
-                                <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-medium text-indigo-600">
-                                  {message.senderName?.charAt(0).toUpperCase() || '?'}
-                                </div>
-                              )}
-                              <span className="font-medium">{isOwnMessage ? 'You' : message.senderName}</span>
+                </div>
+
+                {/* Messages List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No messages yet. Start the conversation!</p>
+                      {user && (
+                        <button
+                          onClick={() => {
+                            // Placeholder for starting conversation
+                            alert('Start conversation feature coming soon!');
+                          }}
+                          className="mt-4 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
+                        >
+                          Send First Message
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {messages.map((message: any, index: number) => {
+                        const isOwnMessage = message.senderId === user.id;
+                        return (
+                          <div key={index} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2`}>
+                            <div className={`max-w-[80%] ${isOwnMessage ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-900'} rounded-lg px-4 py-2`}
+                                 >
+                              <div className="flex items-center space-x-2 mb-1">
+                                {!isOwnMessage && (
+                                  <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-medium text-indigo-600">
+                                    {message.senderName?.charAt(0).toUpperCase() || '?'}
+                                  </div>
+                                )}
+                                <span className="font-medium">{isOwnMessage ? 'You' : message.senderName}</span>
+                              </div>
+                              <p className="text-sm">{message.content}</p>
+                              <span className="text-xs text-gray-500 block mt-1">
+                                {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
                             </div>
-                            <p className="text-sm">{message.content}</p>
-                            <span className="text-xs text-gray-500 block mt-1">
-                              {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    }
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Message Input */}
-              <div className="px-4 py-3 border-t border-gray-200 bg-white">
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => {
-                      // Placeholder for attachment
-                      alert('Attachment feature coming soon!');
-                    }}
-                    className="p-1 bg-gray-100 text-gray-500 rounded hover:bg-gray-200"
-                  >
-                    <span className="text-xl">📎</span>
-                  </button>
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 min-h-[44px] pl-3 pr-10 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    rows={1}
-                  ></textarea>
-                  <button
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim() || loading}
-                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    Send
-                  </button>
+                {/* Message Input */}
+                <div className="px-4 py-3 border-t border-gray-200 bg-white">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setAttachmentPickerVisible(true)}
+                      className="p-1 bg-gray-100 text-gray-500 rounded hover:bg-gray-200"
+                    >
+                      <span className="text-xl">📎</span>
+                    </button>
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type a message..."
+                      className="flex-1 min-h-[44px] pl-3 pr-10 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      rows={1}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendMessage(newMessage, attachments, replyTo?.messageId);
+                        }
+                      }}
+                    ></textarea>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() && attachments.length === 0 || loading}
+                      className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      Send
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center py-12">
               <svg className="h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 24 24">
