@@ -4,6 +4,8 @@ import axios from '@/lib/axios';
 import Link from 'next/link';
 import { useSocket } from '@/hooks/useSocket';
 import ChatUI from '@/components/Chat/ChatUI';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 export default function MessagesPage() {
   const { user } = useAuth();
@@ -179,6 +181,8 @@ export default function MessagesPage() {
   }
 
   return (
+    <ErrorBoundary fallback={<div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center"><p className="text-red-500 text-center">Something went wrong. Please try again later.</p></div>}>
+      <div className="min-h-screen bg-gray-50 py-12">
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -412,5 +416,7 @@ export default function MessagesPage() {
         </div>
       </div>
     </div>
+      </div>
+    </ErrorBoundary>
   );
 }
