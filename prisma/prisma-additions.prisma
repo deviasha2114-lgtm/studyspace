@@ -1,0 +1,40 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// ADD TO prisma/schema.prisma
+// Sprint 7 — Notifications model
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum NotificationType {
+  FOLLOW
+  UNFOLLOW
+  NOTE_LIKE
+  NOTE_COMMENT
+  COMMUNITY_JOIN
+  COMMUNITY_INVITE
+  MENTION
+  SYSTEM
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String?          // null for SYSTEM notifications
+  type        NotificationType
+  entityId    String?          // noteId | communityId | commentId depending on type
+  entityType  String?          // "note" | "community" | "comment"
+  message     String           // pre-rendered human-readable string
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  recipient   User             @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("SentNotifications",     fields: [actorId],     references: [id], onDelete: SetNull)
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, read])
+}
+
+// ─── Add to User model ───────────────────────────────────────────────────────
+// receivedNotifications  Notification[] @relation("ReceivedNotifications")
+// sentNotifications      Notification[] @relation("SentNotifications")
+
+// Migration command (run once):
+// npx prisma migrate dev --name add_notifications

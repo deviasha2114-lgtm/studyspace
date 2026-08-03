@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,6046,o=>{"use strict";o.i(1539),o.i(14164),o.i(286);let e=Error("Cannot find module '@/components/profile/ProfileHeader'");throw e.code="MODULE_NOT_FOUND",e}]);
